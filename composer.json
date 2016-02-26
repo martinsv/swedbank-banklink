@@ -1,0 +1,17 @@
+{
+	"name" : "webmasterlv/swedbank-banklink",
+	"description" : "Payment gateway interface for Swedbank BankLink",
+	"keywords" : ["swedbank", "payments", "banklink"],
+	"homepage" : "https://github.com/webmasterlv/swedbank-banklink",
+	"license" : "MIT",
+	"type" : "library",
+	"autoload" : {
+		"psr-4" : {
+			"Swedbank\\Banklink\\" : "src/"
+		}
+	},
+	"require" : {
+		"php" : "^5.5|^7.0",
+		"behat/transliterator" : "^1.1"
+	}
+}
