@@ -15,6 +15,10 @@ use Swedbank\Banklink\Operation\Attempt;
 use Swedbank\Banklink\Payment\Method;
 use Swedbank\Banklink\Transport\Agent;
 
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LoggerAwareTrait;
+use Psr\Log\LogLevel;
+
 /**
  * Payment gateway interface
  *
@@ -26,8 +30,10 @@ use Swedbank\Banklink\Transport\Agent;
  * file that was distributed with this source code.
  *
  */
-class Gateway implements DataSource
+class Gateway implements DataSource, LoggerAwareInterface
 {
+	use LoggerAwareTrait;
+	
 	/**
 	 * Environment settings
 	 */
@@ -91,13 +97,6 @@ class Gateway implements DataSource
 	protected $mode;
 
 	/**
-	 * Is extended debug enabled
-	 * 
-	 * @var boolean
-	 */
-	protected $extendedDebug = false;
-
-	/**
 	 * Initialize the gateway
 	 * 
 	 * @param Accreditation $accreditation Access credentials
@@ -129,21 +128,7 @@ class Gateway implements DataSource
 	{
 		return $this -> mode == self::ENV_DEV;
 	}
-
-	/**
-	 * Enable extended debug (display data sent and received)
-	 *
-	 * @param boolean $value
-	 * @return boolean
-	 */
-	public function setExtendedDebug($value)
-	{
-		if (!$this -> isDev()) {
-			return false;
-		}
-
-		$this -> extendedDebug = (bool) $value;
-	}
+	
 
 	/**
 	 * Returns API endpoints
@@ -279,27 +264,18 @@ class Gateway implements DataSource
 		$parser	 = new Template($template, $data);
 		$payload = $parser -> parse();
 
-		if ($this -> extendedDebug) {
-			echo "Sending data: <br>";
-			echo "<pre>";
-			echo htmlspecialchars($payload);
-			echo "</pre>";
-		}
+		$this -> logEvent(LogLevel::DEBUG, $payload);
 
 		$agent = new Agent($payload, $this -> getEndpointUrls());
 
 		$result = $agent -> dispatch();
 
+		$this -> logEvent(LogLevel::DEBUG, $result);
+
 		if (!$agent -> isSuccess()) {
 			$status = $agent -> getStatus();
+			$this -> logEvent(LogLevel::ALERT, 'Network error ('.$status['errcode'].'): '.$status['message']);
 			return new NetworkError('Local error: '.$status['message'], ['code' => $status['errcode']]);
-		}
-
-		if ($this -> extendedDebug) {
-			echo "Received data: <br>";
-			echo "<pre>";
-			echo htmlspecialchars($result);
-			echo "</pre>";
 		}
 
 		$response = $parser -> decode($result);
@@ -370,6 +346,7 @@ class Gateway implements DataSource
 				$submission	 = $this -> processOperation($attempt);
 
 				if (!$submission -> isSuccess()) {
+					$this -> logEvent(LogLevel::ERROR, 'PayPal order submission failed - '.$submission -> getMessage());
 					return $submission;
 				}
 
@@ -423,5 +400,21 @@ class Gateway implements DataSource
 
 		$ext = new Query(Query::TYPE_EXTENDED, $extRef, $method, $order);
 		return $this -> processOperation($ext);
+	}
+
+	/**
+	 * Wrapper for log() function
+	 * 
+	 * @param string $level Message level
+	 * @param string $message Message
+	 * @return boolean
+	 */
+	public function logEvent($level, $message)
+	{
+		if ($this -> logger) {
+			return $this -> logger -> log($level, $message);
+		}
+
+		return false;
 	}
 }

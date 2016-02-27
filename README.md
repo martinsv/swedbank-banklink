@@ -1,10 +1,12 @@
 # Swedbank Banklink
 ## About
-Allows integration with Swedbank Banklink payment system across the Baltics. Supports Internet banking, credit card and PayPal services. It provides unified workflow for working with various payment methods available in Banklink service. The methods supported are:
+Allows integration with Swedbank Banklink payment system across the Baltics. Supports Internet banking, credit card and PayPal services. It provides unified workflow for working with various payment methods available in Banklink service. The supported operations are:
 + Payment transaction initiating
 + Transaction result request
 + _Payment refunding (coming soon)_
 + Password change
+
+See the [CHANGELOG](CHANGELOG.md) file for version history.
 
 ## Requirements
 This library requires PHP 5.5+, CURL and SimpleXML functions to be available, and your server should be able to communicate with Swedbank servers. Valid credentials (that are obtained from Swedbank) are required to use payment gateway. 
@@ -72,7 +74,13 @@ use Swedbank\Banklink\Gateway;
 $gateway = new Gateway($accreditation, $merchant, Gateway::ENV_DEV);
 ```
 Third argument defines your transaction environment. Available options are `Gateway::ENV_DEV` (testing) and `Gateway::ENV_PROD` (production). You should always test your transaction in testing environment before switching to production mode.
-You may also enable extended debug mode by issuing `$gateway -> setExtendedDebug(true);` - this will show data being sent and received from payment gateway. Note that it works only in development mode and it may mess with your header redirects since it echoes data immediately to page.
+
+##### 3.1. Event logging
+
+`Gateway` class supports PSR-3 compliant logger interface. Just pass your favorite logger implementation:
+```php
+$gateway -> setLogger($logger);
+```
 
 #### 4. Performing operations
 
